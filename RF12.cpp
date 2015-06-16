@@ -274,6 +274,9 @@ static uint8_t rf12_byte (uint8_t out) {
 /// from functioning, this can be used to adjust some settings.
 /// See the RFM12B wireless module documentation. 
 static uint16_t rf12_xfer (uint16_t cmd) {
+    // if (cmd) {
+      // Serial.println(cmd,HEX);
+    // }
     blockInterrupts();
 
     // writing can take place at full speed, even 8 MHz works
@@ -358,18 +361,19 @@ static void rf12_interrupt() {
                 rf12_buf[rxfill++] = group;
 
             rf12_buf[rxfill++] = in;
-        	rf12_crc = _crc16_update(rf12_crc, in);
-
-    	    // do drssi binary-tree search
-	        if ( drssi < 3 && ((rxfill-2)%drssi_bytes_per_decision)==0 ) {// not yet final value
-	        	// top nibble when going up, bottom one when going down
-	        	drssi = bitRead(state,8)
-	        			? (drssi_dec_tree[drssi] & B1111)
-	        			: (drssi_dec_tree[drssi] >> 4);
-	            if ( drssi < 3 ) {     // not yet final destination, set new threshold
-                	rf12_xfer(RF_RECV_CONTROL | drssi*2+1);
-            	}
-           	}
+//FB: Moved to specific spots:
+            // rf12_crc = _crc16_update(rf12_crc, in);
+//FB: Commented out:
+    	    // // do drssi binary-tree search
+	        // if ( drssi < 3 && ((rxfill-2)%drssi_bytes_per_decision)==0 ) {// not yet final value
+	        	// // top nibble when going up, bottom one when going down
+	        	// drssi = bitRead(state,8)
+	        			// ? (drssi_dec_tree[drssi] & B1111)
+	        			// : (drssi_dec_tree[drssi] >> 4);
+	            // if ( drssi < 3 ) {     // not yet final destination, set new threshold
+                	// rf12_xfer(RF_RECV_CONTROL | drssi*2+1);
+            	// }
+           	// }
 
 			// check if we got all the bytes (or maximum packet length was reached)
 			if (fixedLength) {
@@ -377,8 +381,11 @@ static void rf12_interrupt() {
 					rf12_idle();
 				}
 			} else if (rxfill >= rf12_len + 5 || rxfill >= RF_MAX) {
-       	    	rf12_idle();
-			}
+       	    	rf12_crc = _crc16_update(rf12_crc, in);
+              rf12_idle();
+			} else {
+        rf12_crc = _crc16_update(rf12_crc, in);
+      }
     	} else {                  // we are sending
 	        uint8_t out;
 
@@ -445,8 +452,9 @@ static void rf12_recvStart () {
         rf12_crc = _crc16_update(~0, group);
 #endif
     rxstate = TXRECV;    
-    drssi = 1;              // set drssi to start value
-    rf12_xfer(RF_RECV_CONTROL | drssi*2+1);
+//FB: Commented out:
+    //drssi = 1;              // set drssi to start value
+    //rf12_xfer(RF_RECV_CONTROL | drssi*2+1);
     rfmstate |= B11011000; // enable crystal, synthesizer, receiver and baseband
     rf12_xfer(rfmstate);
 }
